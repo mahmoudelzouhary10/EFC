@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Table2, ListChecks } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Clan, Division, Match } from "@/lib/types";
+import { themeFor, themeVars } from "@/lib/theme";
 import DivisionSwitcher from "@/components/DivisionSwitcher";
+import DivisionCrest from "@/components/DivisionCrest";
 import StandingsTable from "@/components/StandingsTable";
 import FixturesList from "@/components/FixturesList";
 import { Pill } from "@/components/ui";
@@ -18,9 +19,9 @@ export default function LeaguePage({ params }: { params: { division: string } })
   const [loading, setLoading] = useState(true);
 
   const divisionKey = params.division;
+  const theme = themeFor(divisionKey);
 
   const loadAll = useCallback(async () => {
-    setLoading(true);
     const { data: divs } = await supabase.from("divisions").select("*").order("key");
     setDivisions((divs as Division[]) || []);
 
@@ -43,45 +44,44 @@ export default function LeaguePage({ params }: { params: { division: string } })
   }, [divisionKey, supabase]);
 
   useEffect(() => {
+    setLoading(true);
     loadAll();
-    // live-update standings & fixtures the instant an admin saves a result
     const channel = supabase
-      .channel("public-league-changes")
+      .channel(`league-${divisionKey}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, loadAll)
       .on("postgres_changes", { event: "*", schema: "public", table: "clans" }, loadAll)
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadAll, supabase]);
+  }, [loadAll, supabase, divisionKey]);
 
   return (
-    <>
+    <div style={themeVars(theme)}>
       {divisions.length > 0 && (
         <DivisionSwitcher divisions={divisions} active={divisionKey} basePath="/league" />
       )}
 
-      <div className="flex gap-2 mb-4">
+      <DivisionCrest theme={theme} clanCount={clans.length} matchCount={matches.length} />
+
+      <div className="flex gap-2 mb-4 justify-center">
         <Pill active={tab === "standings"} onClick={() => setTab("standings")}>
-          <span className="inline-flex items-center gap-1.5">
-            <Table2 size={14} /> Standings
-          </span>
+          الترتيب
         </Pill>
         <Pill active={tab === "fixtures"} onClick={() => setTab("fixtures")}>
-          <span className="inline-flex items-center gap-1.5">
-            <ListChecks size={14} /> Fixtures
-          </span>
+          المباريات
         </Pill>
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-slate-500 text-sm">Loading…</div>
+        <p className="py-12 text-center text-sm" style={{ color: "var(--muted)" }}>
+          جاري التحميل…
+        </p>
       ) : tab === "standings" ? (
         <StandingsTable clans={clans} matches={matches} />
       ) : (
         <FixturesList clans={clans} matches={matches} editable={false} />
       )}
-    </>
+    </div>
   );
 }

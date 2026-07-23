@@ -1,21 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Calendar, ChevronDown, ChevronRight, CheckCircle2, Save, Shield } from "lucide-react";
+import { ChevronDown, Check, Save } from "lucide-react";
 import { Clan, Match } from "@/lib/types";
 import { SectionCard } from "./ui";
 
 const clanById = (clans: Clan[], id: string) => clans.find((c) => c.id === id);
 
-function ClanLogo({ url }: { url?: string | null }) {
-  if (url) {
+function Mark({ clan }: { clan?: Clan }) {
+  if (clan?.logo_url) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" className="w-6 h-6 rounded-full object-cover border border-white/10 shrink-0" />;
+    return <img src={clan.logo_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />;
   }
   return (
-    <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-      <Shield size={13} className="text-slate-600" />
-    </div>
+    <span
+      className="w-7 h-7 rounded-full shrink-0 grid place-items-center font-data text-[9px] font-bold"
+      style={{ background: "var(--panel-hi)", color: "var(--muted)" }}
+    >
+      {(clan?.tag ?? "—").slice(0, 3)}
+    </span>
   );
 }
 
@@ -47,102 +50,156 @@ export default function FixturesList({
 
   if (matchdays.length === 0) {
     return (
-      <SectionCard className="p-8 text-center text-slate-500">
-        Fixtures haven&apos;t been generated for this division yet.
+      <SectionCard className="p-10 text-center">
+        <p style={{ color: "var(--muted)" }}>الجدول لسه ما اتعملش للدرجة دي.</p>
       </SectionCard>
     );
   }
 
-  const setDraft = (matchId: string, field: "home" | "away", value: string) => {
-    setDrafts((d) => ({ ...d, [matchId]: { ...d[matchId], [field]: value } }));
-  };
+  const setDraft = (id: string, field: "home" | "away", value: string) =>
+    setDrafts((d) => ({ ...d, [id]: { ...d[id], [field]: value } }));
+
+  const scoreInput =
+    "w-11 text-center rounded-lg py-1.5 font-data text-sm bg-obsidian focus:outline-none";
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {matchdays.map(({ md, matches: dayMatches }) => {
         const isOpen = open === md;
-        const allPlayed = dayMatches.every((m) => m.played);
+        const done = dayMatches.every((m) => m.played);
         return (
           <SectionCard key={md} className="overflow-hidden">
             <button
               onClick={() => setOpen(isOpen ? undefined : md)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3.5"
             >
-              <div className="flex items-center gap-2">
-                <Calendar size={15} className="text-cyan-400" />
-                <span className="font-semibold text-slate-200 text-sm">Matchday {md}</span>
-                {allPlayed && <CheckCircle2 size={14} className="text-emerald-400" />}
-              </div>
-              {isOpen ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronRight size={16} className="text-slate-500" />}
+              <span className="flex items-center gap-2.5">
+                <span
+                  className="font-data text-[11px] font-bold w-6 h-6 rounded-md grid place-items-center"
+                  style={{
+                    background: "var(--accent-soft)",
+                    color: "var(--accent-hi)",
+                    border: "1px solid var(--accent-line)",
+                  }}
+                >
+                  {md}
+                </span>
+                <span className="font-ar font-bold text-sm">الجولة {md}</span>
+                {done && <Check size={13} style={{ color: "var(--accent)" }} />}
+              </span>
+              <ChevronDown
+                size={16}
+                style={{
+                  color: "var(--muted)",
+                  transform: isOpen ? "rotate(180deg)" : undefined,
+                  transition: "transform 200ms",
+                }}
+              />
             </button>
+
             {isOpen && (
-              <div className="border-t border-white/10 divide-y divide-white/5">
-                {dayMatches.map((m) => {
+              <div style={{ borderTop: "1px solid var(--hairline)" }}>
+                {dayMatches.map((m, idx) => {
                   const home = clanById(clans, m.home_clan_id);
                   const away = clanById(clans, m.away_clan_id);
-                  const draft = drafts[m.id] || {};
-                  const homeVal = draft.home ?? (m.home_score ?? "").toString();
-                  const awayVal = draft.away ?? (m.away_score ?? "").toString();
-                  const homeWin = m.played && (m.home_score as number) > (m.away_score as number);
-                  const awayWin = m.played && (m.away_score as number) > (m.home_score as number);
+                  const d = drafts[m.id] || {};
+                  const hv = d.home ?? (m.home_score ?? "").toString();
+                  const av = d.away ?? (m.away_score ?? "").toString();
+                  const hw = m.played && (m.home_score as number) > (m.away_score as number);
+                  const aw = m.played && (m.away_score as number) > (m.home_score as number);
 
                   return (
-                    <div key={m.id} className="flex items-center gap-2 sm:gap-4 px-4 py-3">
-                      <div className="flex-1 min-w-0 flex items-center justify-end gap-2">
-                        <span className={`text-sm truncate ${homeWin ? "text-slate-100 font-semibold" : "text-slate-400"}`}>
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2 px-3 sm:px-4 py-3"
+                      style={{ borderTop: idx === 0 ? "none" : "1px solid var(--hairline)" }}
+                    >
+                      <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
+                        <span
+                          className="text-[13px] truncate text-right"
+                          style={{
+                            color: hw ? "var(--accent-hi)" : "var(--parchment)",
+                            fontWeight: hw ? 700 : 500,
+                          }}
+                        >
                           {home?.name ?? "—"}
                         </span>
-                        <ClanLogo url={home?.logo_url} />
+                        <Mark clan={home} />
                       </div>
 
                       {editable ? (
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           <input
                             type="number"
                             min="0"
-                            value={homeVal}
+                            inputMode="numeric"
+                            value={hv}
                             onChange={(e) => setDraft(m.id, "home", e.target.value)}
-                            className="w-12 text-center rounded-md bg-black/40 border border-white/15 py-1 text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-400/60"
+                            className={scoreInput}
+                            style={{ border: "1px solid var(--hairline)", color: "var(--parchment)" }}
                           />
-                          <span className="text-slate-600 text-xs">:</span>
                           <input
                             type="number"
                             min="0"
-                            value={awayVal}
+                            inputMode="numeric"
+                            value={av}
                             onChange={(e) => setDraft(m.id, "away", e.target.value)}
-                            className="w-12 text-center rounded-md bg-black/40 border border-white/15 py-1 text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-400/60"
+                            className={scoreInput}
+                            style={{ border: "1px solid var(--hairline)", color: "var(--parchment)" }}
                           />
                           <button
-                            title="Save result"
+                            aria-label="حفظ النتيجة"
                             onClick={() => {
-                              if (homeVal === "" || awayVal === "" || !onSaveScore) return;
-                              onSaveScore(m.id, Number(homeVal), Number(awayVal));
-                              setDrafts((d) => {
-                                const c = { ...d };
+                              if (hv === "" || av === "" || !onSaveScore) return;
+                              onSaveScore(m.id, Number(hv), Number(av));
+                              setDrafts((prev) => {
+                                const c = { ...prev };
                                 delete c[m.id];
                                 return c;
                               });
                             }}
-                            className="ml-1 p-1.5 rounded-md bg-emerald-400/10 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/20"
+                            className="p-2 rounded-lg"
+                            style={{
+                              background: "var(--accent-soft)",
+                              border: "1px solid var(--accent-line)",
+                              color: "var(--accent-hi)",
+                            }}
                           >
                             <Save size={13} />
                           </button>
                         </div>
                       ) : (
-                        <div className="shrink-0 min-w-[64px] text-center">
+                        <div className="shrink-0 px-1">
                           {m.played ? (
-                            <span className="font-mono text-sm px-2.5 py-1 rounded bg-white/5 border border-white/10 text-slate-100">
-                              {m.home_score} : {m.away_score}
+                            <span
+                              className="font-data text-sm font-bold px-2.5 py-1 rounded-lg"
+                              style={{
+                                background: "var(--panel-hi)",
+                                border: "1px solid var(--hairline)",
+                              }}
+                            >
+                              {m.home_score}–{m.away_score}
                             </span>
                           ) : (
-                            <span className="text-[11px] px-2 py-1 rounded-full border border-white/10 text-slate-500 tracking-wide">vs</span>
+                            <span
+                              className="font-display text-[9px] uppercase tracking-[0.2em] px-2"
+                              style={{ color: "var(--muted)" }}
+                            >
+                              vs
+                            </span>
                           )}
                         </div>
                       )}
 
-                      <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <ClanLogo url={away?.logo_url} />
-                        <span className={`text-sm truncate ${awayWin ? "text-slate-100 font-semibold" : "text-slate-400"}`}>
+                      <div className="flex-1 flex items-center gap-2 min-w-0">
+                        <Mark clan={away} />
+                        <span
+                          className="text-[13px] truncate"
+                          style={{
+                            color: aw ? "var(--accent-hi)" : "var(--parchment)",
+                            fontWeight: aw ? 700 : 500,
+                          }}
+                        >
                           {away?.name ?? "—"}
                         </span>
                       </div>

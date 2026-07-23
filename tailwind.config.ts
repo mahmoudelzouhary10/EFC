@@ -5,16 +5,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        base: "#0B0F14",
-        panel: "#101720",
-        gold: "#FFC145",
-        neon: "#34FFB2",
-        electric: "#3DD9FF",
+        obsidian: "#08070C",
+        panel: "#14111C",
+        panelHi: "#1C1826",
+        parchment: "#EDE7DA",
+        muted: "#8C8397",
+        royal: "#5B3E8E",
       },
       fontFamily: {
-        display: ["Rajdhani", "sans-serif"],
-        sans: ["Inter", "sans-serif"],
-        mono: ["JetBrains Mono", "monospace"],
+        display: ["Cinzel", "Georgia", "serif"],
+        ar: ["Cairo", "system-ui", "sans-serif"],
+        sans: ["Barlow", "system-ui", "sans-serif"],
+        data: ["JetBrains Mono", "monospace"],
       },
     },
   },

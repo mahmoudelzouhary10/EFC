@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Clan, Division, Match } from "@/lib/types";
+import { themeFor, themeVars } from "@/lib/theme";
 import DivisionSwitcher from "@/components/DivisionSwitcher";
 import ClanManager from "@/components/ClanManager";
 import FixtureGenerator from "@/components/FixtureGenerator";
@@ -65,8 +66,10 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
     return <div className="py-12 text-center text-slate-500 text-sm">Loading…</div>;
   }
 
+  const theme = themeFor(divisionKey);
+
   return (
-    <>
+    <div style={themeVars(theme)}>
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-sm font-semibold text-slate-400">Admin Dashboard</h1>
         <button
@@ -103,6 +106,6 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
           {tab === "settings" && <FederationSettingsPanel />}
         </>
       )}
-    </>
+    </div>
   );
 }

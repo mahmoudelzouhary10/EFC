@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { FederationSettings } from "@/lib/types";
 
@@ -20,28 +19,30 @@ export default function Header() {
   }, [supabase]);
 
   const nameAr = settings?.name_ar || "الاتحاد المصري للكلانات";
-  const nameEn = settings?.name_en || "Egyptian Clans Federation";
+  const nameEn = settings?.name_en || "Egyptian Federation of Clans";
+  const logo = settings?.logo_url || "/logos/first.png";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0B0F14]/95 backdrop-blur">
-      <div className="max-w-3xl mx-auto px-4 py-3 flex items-center">
-        <Link href="/league/first" className="flex items-center gap-2.5">
-          {settings?.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={settings.logo_url}
-              alt={nameAr}
-              className="w-9 h-9 rounded-lg object-cover border border-emerald-400/30"
-            />
-          ) : (
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-400/20 to-cyan-400/10 border border-emerald-400/30 flex items-center justify-center">
-              <Shield size={18} className="text-emerald-300" />
-            </div>
-          )}
-          <div className="leading-tight">
-            <div className="font-display font-bold text-base tracking-wide text-slate-100">{nameAr}</div>
-            <div className="text-[10px] text-slate-500">{nameEn} · eFootball</div>
-          </div>
+    <header
+      className="sticky top-0 z-30 backdrop-blur-md"
+      style={{
+        background: "rgba(8, 7, 12, 0.88)",
+        borderBottom: "1px solid var(--hairline)",
+      }}
+    >
+      <div className="max-w-3xl mx-auto px-4 h-16 flex items-center">
+        <Link href="/league/first" className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logo} alt={nameAr} className="w-10 h-10 rounded-full object-cover" />
+          <span className="leading-tight">
+            <span className="font-ar font-bold text-[15px] block">{nameAr}</span>
+            <span
+              className="font-display text-[8.5px] uppercase tracking-[0.24em] block"
+              style={{ color: "var(--muted)" }}
+            >
+              {nameEn}
+            </span>
+          </span>
         </Link>
       </div>
     </header>

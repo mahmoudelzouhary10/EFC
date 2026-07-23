@@ -10,11 +10,16 @@ export function Pill({
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-full text-sm font-semibold tracking-wide transition-all border ${
+      className="px-4 py-2 rounded-full text-[13px] font-semibold uppercase tracking-[0.14em] transition-colors border"
+      style={
         active
-          ? "bg-emerald-400/10 border-emerald-400/60 text-emerald-300 shadow-[0_0_16px_rgba(52,255,178,0.15)]"
-          : "border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/25"
-      }`}
+          ? {
+              color: "var(--accent-hi)",
+              borderColor: "var(--accent-line)",
+              background: "var(--accent-soft)",
+            }
+          : { color: "var(--muted)", borderColor: "var(--hairline)" }
+      }
     >
       {children}
     </button>
@@ -28,5 +33,24 @@ export function SectionCard({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={`rounded-xl border border-white/10 bg-[#101720] ${className}`}>{children}</div>;
+  return (
+    <div
+      className={`rounded-2xl bg-panel ${className}`}
+      style={{ border: "1px solid var(--hairline)" }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Small uppercase label used above sections. */
+export function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="text-[10px] font-semibold uppercase tracking-[0.28em]"
+      style={{ color: "var(--muted)" }}
+    >
+      {children}
+    </span>
+  );
 }
