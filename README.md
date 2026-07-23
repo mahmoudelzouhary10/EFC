@@ -159,3 +159,4 @@ middleware.ts                        # protects /admin/dashboard/*
   `panel`, `base`) — the whole UI is driven from those tokens.
 - **More divisions**: insert another row into `divisions` with a new
   `key`, and the `DivisionSwitcher` picks it up automatically.
+"# EFC" 
