@@ -78,9 +78,9 @@ export default function LeaguePage({ params }: { params: { division: string } })
           جاري التحميل…
         </p>
       ) : tab === "standings" ? (
-        <StandingsTable clans={clans} matches={matches} />
+        <StandingsTable clans={clans} matches={matches} division={divisionKey} />
       ) : (
-        <FixturesList clans={clans} matches={matches} editable={false} />
+        <FixturesList clans={clans} matches={matches} editable={false} division={divisionKey} />
       )}
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown, Check, Save } from "lucide-react";
+import Link from "next/link";
 import { Clan, Match } from "@/lib/types";
 import { SectionCard } from "./ui";
 
@@ -27,11 +28,14 @@ export default function FixturesList({
   matches,
   editable = false,
   onSaveScore,
+  division,
 }: {
   clans: Clan[];
   matches: Match[];
   editable?: boolean;
   onSaveScore?: (matchId: string, homeScore: number, awayScore: number) => void;
+  /** when provided (and not editable), clan names link to their page */
+  division?: string;
 }) {
   const matchdays = useMemo(() => {
     const groups: Record<number, Match[]> = {};
@@ -61,6 +65,24 @@ export default function FixturesList({
 
   const scoreInput =
     "w-11 text-center rounded-lg py-1.5 font-data text-sm bg-obsidian focus:outline-none";
+
+  const linkable = Boolean(division) && !editable;
+  const LinkMaybe = ({
+    id,
+    className,
+    children,
+  }: {
+    id: string;
+    className: string;
+    children: React.ReactNode;
+  }) =>
+    linkable ? (
+      <Link href={`/league/${division}/clan/${id}`} className={className}>
+        {children}
+      </Link>
+    ) : (
+      <div className={className}>{children}</div>
+    );
 
   return (
     <div className="space-y-2.5">
@@ -114,7 +136,7 @@ export default function FixturesList({
                       className="flex items-center gap-2 px-3 sm:px-4 py-3"
                       style={{ borderTop: idx === 0 ? "none" : "1px solid var(--hairline)" }}
                     >
-                      <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
+                      <LinkMaybe id={m.home_clan_id} className="flex-1 flex items-center justify-end gap-2 min-w-0">
                         <span
                           className="text-[13px] truncate text-right"
                           style={{
@@ -125,7 +147,7 @@ export default function FixturesList({
                           {home?.name ?? "—"}
                         </span>
                         <Mark clan={home} />
-                      </div>
+                      </LinkMaybe>
 
                       {editable ? (
                         <div className="flex items-center gap-1 shrink-0">
@@ -191,7 +213,7 @@ export default function FixturesList({
                         </div>
                       )}
 
-                      <div className="flex-1 flex items-center gap-2 min-w-0">
+                      <LinkMaybe id={m.away_clan_id} className="flex-1 flex items-center gap-2 min-w-0">
                         <Mark clan={away} />
                         <span
                           className="text-[13px] truncate"
@@ -202,7 +224,7 @@ export default function FixturesList({
                         >
                           {away?.name ?? "—"}
                         </span>
-                      </div>
+                      </LinkMaybe>
                     </div>
                   );
                 })}

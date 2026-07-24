@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Clan, Match } from "@/lib/types";
 import { computeStandings } from "@/lib/standings";
 import { SectionCard } from "./ui";
@@ -19,7 +20,15 @@ function ClanMark({ logo, tag }: { logo: string | null; tag: string }) {
   );
 }
 
-export default function StandingsTable({ clans, matches }: { clans: Clan[]; matches: Match[] }) {
+export default function StandingsTable({
+  clans,
+  matches,
+  division,
+}: {
+  clans: Clan[];
+  matches: Match[];
+  division: string;
+}) {
   const rows = computeStandings(clans, matches);
 
   if (rows.length === 0) {
@@ -78,15 +87,18 @@ export default function StandingsTable({ clans, matches }: { clans: Clan[]; matc
                   )}
                 </td>
                 <td className="py-2.5 px-1.5">
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <Link
+                    href={`/league/${division}/clan/${r.id}`}
+                    className="flex items-center gap-2.5 min-w-0"
+                  >
                     <ClanMark logo={clan?.logo_url ?? null} tag={r.tag} />
                     <span
-                      className="text-[13px] font-semibold truncate"
+                      className="text-[13px] font-semibold truncate underline-offset-4 hover:underline"
                       style={{ color: leader ? "var(--accent-hi)" : "var(--parchment)" }}
                     >
                       {r.name}
                     </span>
-                  </div>
+                  </Link>
                 </td>
                 <td className="py-2.5 px-1.5 text-center font-data text-xs">{r.mp}</td>
                 <td className="py-2.5 px-1.5 text-center font-data text-xs hidden sm:table-cell">{r.w}</td>
