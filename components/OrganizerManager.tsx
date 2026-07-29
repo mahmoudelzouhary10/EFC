@@ -1,74 +1,41 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, Shuffle, Pencil, Save, X, Users } from "lucide-react";
+import { Plus, Trash2, Pencil, Save, X, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Match, Organizer } from "@/lib/types";
+import { Clan, Match, Organizer } from "@/lib/types";
 import { SectionCard } from "./ui";
 
-/**
- * Walks every matchday in order and hands out organizers from a rotating
- * pointer. Because the pointer carries across matchdays, the total workload
- * stays even (max one match difference between any two organizers), and no
- * organizer gets two matches in the same matchday until everyone has one.
- */
-function buildAssignments(matches: Match[], organizerIds: string[]) {
-  const byDay: Record<number, Match[]> = {};
-  matches.forEach((m) => {
-    (byDay[m.matchday] ||= []).push(m);
-  });
-
-  const assignments: { id: string; organizer_id: string }[] = [];
-  let pointer = 0;
-
-  Object.keys(byDay)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .forEach((day) => {
-      byDay[day].forEach((m) => {
-        assignments.push({ id: m.id, organizer_id: organizerIds[pointer % organizerIds.length] });
-        pointer++;
-      });
-    });
-
-  return assignments;
-}
-
-function shuffled<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-export default function OrganizerManager({ onChanged }: { onChanged: () => void }) {
+export default function OrganizerManager({
+  allClans,
+  onChanged,
+}: {
+  /** every clan in both divisions, for the "belongs to" picker */
+  allClans: Clan[];
+  onChanged: () => void;
+}) {
   const supabase = createClient();
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [totalMatches, setTotalMatches] = useState(0);
   const [newName, setNewName] = useState("");
+  const [newClan, setNewClan] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editClan, setEditClan] = useState("");
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [{ data: orgs }, { data: ms }] = await Promise.all([
       supabase.from("organizers").select("*").order("created_at"),
-      supabase.from("matches").select("id, matchday, organizer_id, division_id"),
+      supabase.from("matches").select("id, organizer_id"),
     ]);
     setOrganizers((orgs as Organizer[]) || []);
-
     const tally: Record<string, number> = {};
     ((ms as Match[]) || []).forEach((m) => {
       if (m.organizer_id) tally[m.organizer_id] = (tally[m.organizer_id] || 0) + 1;
     });
     setCounts(tally);
-    setTotalMatches((ms || []).length);
   }, [supabase]);
 
   useEffect(() => {
@@ -77,11 +44,15 @@ export default function OrganizerManager({ onChanged }: { onChanged: () => void 
 
   const add = async () => {
     if (!newName.trim()) return;
-    const { error } = await supabase.from("organizers").insert({ name: newName.trim() });
+    const { error } = await supabase
+      .from("organizers")
+      .insert({ name: newName.trim(), clan_id: newClan || null });
     if (error) return setError(error.message);
     setNewName("");
+    setNewClan("");
     setError(null);
     load();
+    onChanged();
   };
 
   const remove = async (id: string) => {
@@ -96,7 +67,7 @@ export default function OrganizerManager({ onChanged }: { onChanged: () => void 
     if (!editingId) return;
     const { error } = await supabase
       .from("organizers")
-      .update({ name: editName.trim() })
+      .update({ name: editName.trim(), clan_id: editClan || null })
       .eq("id", editingId);
     if (error) setError(error.message);
     setEditingId(null);
@@ -104,161 +75,162 @@ export default function OrganizerManager({ onChanged }: { onChanged: () => void 
     onChanged();
   };
 
-  /** Assigns organizers across every match in BOTH divisions. */
-  const distribute = async (randomize: boolean) => {
-    if (organizers.length === 0) return;
-    setBusy(true);
-    setError(null);
-    setNote(null);
+  const clanName = (id: string | null) =>
+    id ? allClans.find((c) => c.id === id)?.name ?? null : null;
 
-    const { data: divs } = await supabase.from("divisions").select("id, key").order("key");
-    const ids = randomize ? shuffled(organizers.map((o) => o.id)) : organizers.map((o) => o.id);
-
-    let done = 0;
-    for (const d of divs || []) {
-      const { data: ms } = await supabase
-        .from("matches")
-        .select("*")
-        .eq("division_id", d.id)
-        .order("matchday");
-
-      const list = (ms as Match[]) || [];
-      if (list.length === 0) continue;
-
-      const assignments = buildAssignments(list, ids);
-      // one update per organizer group keeps this to a handful of requests
-      const grouped: Record<string, string[]> = {};
-      assignments.forEach((a) => {
-        (grouped[a.organizer_id] ||= []).push(a.id);
-      });
-
-      for (const [organizerId, matchIds] of Object.entries(grouped)) {
-        const { error } = await supabase
-          .from("matches")
-          .update({ organizer_id: organizerId })
-          .in("id", matchIds);
-        if (error) {
-          setBusy(false);
-          return setError(error.message);
-        }
-        done += matchIds.length;
-      }
-    }
-
-    setBusy(false);
-    setNote(`تم توزيع ${done} مباراة على ${organizers.length} منظم.`);
-    load();
-    onChanged();
-  };
-
-  const per = organizers.length > 0 ? Math.floor(totalMatches / organizers.length) : 0;
+  const field = "rounded-lg px-2.5 py-1.5 text-sm bg-obsidian focus:outline-none";
+  const fieldStyle = { border: "1px solid var(--hairline)", color: "var(--parchment)" };
 
   return (
-    <div className="space-y-4">
-      <SectionCard className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-ar font-bold text-sm flex items-center gap-2">
-            <Users size={15} style={{ color: "var(--accent)" }} /> المنظمين
-          </h3>
-          <span
-            className="font-data text-[11px] px-2 py-0.5 rounded"
-            style={{ background: "var(--panel-hi)", color: "var(--muted)" }}
+    <SectionCard className="p-4">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-ar font-bold text-sm flex items-center gap-2">
+          <Users size={15} style={{ color: "var(--accent)" }} /> المنظمين
+        </h3>
+        <span
+          className="font-data text-[11px] px-2 py-0.5 rounded"
+          style={{ background: "var(--panel-hi)", color: "var(--muted)" }}
+        >
+          {organizers.length}
+        </span>
+      </div>
+      <p className="text-[11px] mb-3 leading-relaxed" style={{ color: "var(--muted)" }}>
+        لو المنظم عنده كلان بيلعب، اختاره من القائمة — النظام مش هيحطه أبدًا على ماتش كلانه.
+      </p>
+
+      {error && (
+        <p className="text-xs mb-3" style={{ color: "#E8737A" }}>
+          {error}
+        </p>
+      )}
+
+      <div className="space-y-1.5 mb-4">
+        {organizers.map((o) => (
+          <div
+            key={o.id}
+            className="rounded-xl px-3 py-2.5"
+            style={{ background: "var(--panel-hi)", border: "1px solid var(--hairline)" }}
           >
-            {organizers.length}
-          </span>
-        </div>
-
-        {error && (
-          <p className="text-xs mb-3" style={{ color: "#E8737A" }}>
-            {error}
-          </p>
-        )}
-
-        <div className="space-y-1.5 mb-4">
-          {organizers.map((o) => (
-            <div
-              key={o.id}
-              className="flex items-center gap-2 rounded-xl px-3 py-2"
-              style={{ background: "var(--panel-hi)", border: "1px solid var(--hairline)" }}
-            >
-              {editingId === o.id ? (
-                <>
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="flex-1 min-w-0 rounded-lg px-2 py-1 text-sm bg-obsidian focus:outline-none"
-                    style={{ border: "1px solid var(--hairline)", color: "var(--parchment)" }}
-                  />
-                  <button onClick={saveEdit} className="p-1.5" style={{ color: "var(--accent-hi)" }}>
-                    <Save size={14} />
+            {editingId === o.id ? (
+              <div className="space-y-2">
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className={`w-full ${field}`}
+                  style={fieldStyle}
+                />
+                <select
+                  value={editClan}
+                  onChange={(e) => setEditClan(e.target.value)}
+                  className={`w-full ${field}`}
+                  style={fieldStyle}
+                >
+                  <option value="">مش عنده كلان</option>
+                  {allClans.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveEdit}
+                    className="flex-1 py-1.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5"
+                    style={{
+                      background: "var(--accent-soft)",
+                      border: "1px solid var(--accent-line)",
+                      color: "var(--accent-hi)",
+                    }}
+                  >
+                    <Save size={13} /> حفظ
                   </button>
                   <button
                     onClick={() => setEditingId(null)}
-                    className="p-1.5"
-                    style={{ color: "var(--muted)" }}
+                    className="px-3 py-1.5 rounded-lg text-xs"
+                    style={{ color: "var(--muted)", border: "1px solid var(--hairline)" }}
                   >
-                    <X size={14} />
+                    <X size={13} />
                   </button>
-                </>
-              ) : (
-                <>
-                  <span className="flex-1 min-w-0 truncate text-[13px] font-semibold">{o.name}</span>
-                  <span
-                    className="font-data text-[10px] px-1.5 py-0.5 rounded shrink-0"
-                    style={{ color: "var(--accent-hi)", background: "var(--accent-soft)" }}
-                  >
-                    {counts[o.id] || 0} ماتش
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13px] font-semibold truncate">{o.name}</span>
+                  <span className="block text-[10px] truncate" style={{ color: "var(--muted)" }}>
+                    {clanName(o.clan_id) ? `كلان: ${clanName(o.clan_id)}` : "مش عنده كلان"}
                   </span>
+                </span>
+                <span
+                  className="font-data text-[10px] px-1.5 py-0.5 rounded shrink-0"
+                  style={{ color: "var(--accent-hi)", background: "var(--accent-soft)" }}
+                >
+                  {counts[o.id] || 0}
+                </span>
+                <button
+                  onClick={() => {
+                    setEditingId(o.id);
+                    setEditName(o.name);
+                    setEditClan(o.clan_id || "");
+                  }}
+                  className="p-1.5"
+                  style={{ color: "var(--muted)" }}
+                >
+                  <Pencil size={13} />
+                </button>
+                {confirmId === o.id ? (
                   <button
-                    onClick={() => {
-                      setEditingId(o.id);
-                      setEditName(o.name);
-                    }}
+                    onClick={() => remove(o.id)}
+                    className="text-[10px] px-2 py-1 rounded-lg font-bold shrink-0"
+                    style={{ background: "rgba(232,115,122,0.15)", color: "#E8737A" }}
+                  >
+                    تأكيد؟
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setConfirmId(o.id)}
                     className="p-1.5"
                     style={{ color: "var(--muted)" }}
                   >
-                    <Pencil size={13} />
+                    <Trash2 size={13} />
                   </button>
-                  {confirmId === o.id ? (
-                    <button
-                      onClick={() => remove(o.id)}
-                      className="text-[10px] px-2 py-1 rounded-lg font-bold"
-                      style={{ background: "rgba(232,115,122,0.15)", color: "#E8737A" }}
-                    >
-                      تأكيد؟
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmId(o.id)}
-                      className="p-1.5"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-          {organizers.length === 0 && (
-            <p className="text-sm py-3 text-center" style={{ color: "var(--muted)" }}>
-              لسه مفيش منظمين.
-            </p>
-          )}
-        </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+        {organizers.length === 0 && (
+          <p className="text-sm py-3 text-center" style={{ color: "var(--muted)" }}>
+            لسه مفيش منظمين.
+          </p>
+        )}
+      </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            placeholder="اسم المنظم"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-            className="flex-1 min-w-0 rounded-xl px-3 py-2 text-sm bg-obsidian focus:outline-none"
-            style={{ border: "1px solid var(--hairline)", color: "var(--parchment)" }}
-          />
+      <div className="space-y-2">
+        <input
+          placeholder="اسم المنظم"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          className={`w-full ${field}`}
+          style={fieldStyle}
+        />
+        <div className="flex gap-2">
+          <select
+            value={newClan}
+            onChange={(e) => setNewClan(e.target.value)}
+            className={`flex-1 min-w-0 ${field}`}
+            style={fieldStyle}
+          >
+            <option value="">مش عنده كلان</option>
+            {allClans.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
           <button
             onClick={add}
-            className="p-2.5 rounded-xl shrink-0"
+            className="p-2.5 rounded-lg shrink-0"
             style={{
               background: "var(--accent-soft)",
               border: "1px solid var(--accent-line)",
@@ -268,48 +240,7 @@ export default function OrganizerManager({ onChanged }: { onChanged: () => void 
             <Plus size={16} />
           </button>
         </div>
-      </SectionCard>
-
-      <SectionCard className="p-4">
-        <h3 className="font-ar font-bold text-sm mb-1">توزيع الجولات</h3>
-        <p className="text-xs mb-3 leading-relaxed" style={{ color: "var(--muted)" }}>
-          {organizers.length === 0
-            ? "ضيف المنظمين الأول عشان تقدر توزع."
-            : totalMatches === 0
-            ? "اعمل جدول المباريات الأول من تبويب Fixtures."
-            : `التوزيع بيشمل الدرجتين — ${totalMatches} مباراة على ${organizers.length} منظم، يعني حوالي ${per} مباراة لكل واحد.`}
-        </p>
-
-        {note && (
-          <p className="text-xs mb-3" style={{ color: "var(--accent-hi)" }}>
-            {note}
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            disabled={busy || organizers.length === 0 || totalMatches === 0}
-            onClick={() => distribute(false)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold disabled:opacity-40"
-            style={{
-              background: "var(--accent-soft)",
-              border: "1px solid var(--accent-line)",
-              color: "var(--accent-hi)",
-            }}
-          >
-            {busy ? "…" : "وزّع بالترتيب"}
-          </button>
-          <button
-            disabled={busy || organizers.length === 0 || totalMatches === 0}
-            onClick={() => distribute(true)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-40"
-            style={{ border: "1px solid var(--hairline)", color: "var(--parchment)" }}
-          >
-            <Shuffle size={13} />
-            {busy ? "…" : "خلط عشوائي"}
-          </button>
-        </div>
-      </SectionCard>
-    </div>
+      </div>
+    </SectionCard>
   );
 }

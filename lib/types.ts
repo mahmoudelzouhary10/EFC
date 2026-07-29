@@ -35,6 +35,8 @@ export type Match = {
 export type Organizer = {
   id: string;
   name: string;
+  /** the clan this organizer belongs to, if any — never assigned their own matches */
+  clan_id: string | null;
 };
 
 export type StandingRow = {

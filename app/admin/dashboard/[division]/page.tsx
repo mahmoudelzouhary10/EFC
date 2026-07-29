@@ -9,6 +9,7 @@ import { themeFor, themeVars } from "@/lib/theme";
 import DivisionSwitcher from "@/components/DivisionSwitcher";
 import ClanManager from "@/components/ClanManager";
 import OrganizerManager from "@/components/OrganizerManager";
+import MatchdayOrganizers from "@/components/MatchdayOrganizers";
 import FixtureGenerator from "@/components/FixtureGenerator";
 import FixturesList from "@/components/FixturesList";
 import FederationSettingsPanel from "@/components/FederationSettings";
@@ -24,6 +25,7 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
   const [clans, setClans] = useState<Clan[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
+  const [allClans, setAllClans] = useState<Clan[]>([]);
   const [tab, setTab] = useState<"clans" | "fixtures" | "results" | "organizers" | "settings">("clans");
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +42,8 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
         supabase.from("matches").select("*").eq("division_id", current.id).order("matchday"),
         supabase.from("organizers").select("*"),
       ]);
+      const { data: everyClan } = await supabase.from("clans").select("*").order("name");
+      setAllClans((everyClan as Clan[]) || []);
       setClans((clanRows as Clan[]) || []);
       setMatches((matchRows as Match[]) || []);
       setOrganizers((orgRows as Organizer[]) || []);
@@ -116,7 +120,18 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
               organizers={organizers}
             />
           )}
-          {tab === "organizers" && <OrganizerManager onChanged={loadAll} />}
+          {tab === "organizers" && (
+            <div className="space-y-4">
+              <OrganizerManager allClans={allClans} onChanged={loadAll} />
+              <MatchdayOrganizers
+                division={division}
+                clans={clans}
+                matches={matches}
+                organizers={organizers}
+                onChanged={loadAll}
+              />
+            </div>
+          )}
           {tab === "settings" && <FederationSettingsPanel />}
         </>
       )}
