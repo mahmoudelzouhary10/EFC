@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Clan, Division, Match } from "@/lib/types";
+import { Clan, Division, Match, Organizer } from "@/lib/types";
 import { computeStandings } from "@/lib/standings";
 import { themeFor, themeVars } from "@/lib/theme";
 import { SectionCard } from "@/components/ui";
@@ -17,6 +17,7 @@ export default function ClanPage({ params }: { params: Params }) {
 
   const [clans, setClans] = useState<Clan[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [organizers, setOrganizers] = useState<Organizer[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -26,12 +27,14 @@ export default function ClanPage({ params }: { params: Params }) {
       setLoading(false);
       return;
     }
-    const [{ data: clanRows }, { data: matchRows }] = await Promise.all([
+    const [{ data: clanRows }, { data: matchRows }, { data: orgRows }] = await Promise.all([
       supabase.from("clans").select("*").eq("division_id", current.id),
       supabase.from("matches").select("*").eq("division_id", current.id).order("matchday"),
+      supabase.from("organizers").select("*"),
     ]);
     setClans((clanRows as Clan[]) || []);
     setMatches((matchRows as Match[]) || []);
+    setOrganizers((orgRows as Organizer[]) || []);
     setLoading(false);
   }, [params.division, supabase]);
 
@@ -140,6 +143,9 @@ export default function ClanPage({ params }: { params: Params }) {
             style={{ color: "var(--muted)" }}
           >
             {isHome ? "Home" : "Away"}
+            {organizers.find((o) => o.id === m.organizer_id)
+              ? ` · ${organizers.find((o) => o.id === m.organizer_id)!.name}`
+              : ""}
           </span>
         </span>
 

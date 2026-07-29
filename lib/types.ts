@@ -29,6 +29,12 @@ export type Match = {
   home_score: number | null;
   away_score: number | null;
   played: boolean;
+  organizer_id: string | null;
+};
+
+export type Organizer = {
+  id: string;
+  name: string;
 };
 
 export type StandingRow = {

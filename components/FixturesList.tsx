@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Check, Save } from "lucide-react";
 import Link from "next/link";
-import { Clan, Match } from "@/lib/types";
+import { Clan, Match, Organizer } from "@/lib/types";
 import { SectionCard } from "./ui";
 
 const clanById = (clans: Clan[], id: string) => clans.find((c) => c.id === id);
@@ -29,6 +29,7 @@ export default function FixturesList({
   editable = false,
   onSaveScore,
   division,
+  organizers = [],
 }: {
   clans: Clan[];
   matches: Match[];
@@ -36,6 +37,7 @@ export default function FixturesList({
   onSaveScore?: (matchId: string, homeScore: number, awayScore: number) => void;
   /** when provided (and not editable), clan names link to their page */
   division?: string;
+  organizers?: Organizer[];
 }) {
   const matchdays = useMemo(() => {
     const groups: Record<number, Match[]> = {};
@@ -65,6 +67,9 @@ export default function FixturesList({
 
   const scoreInput =
     "w-11 text-center rounded-lg py-1.5 font-data text-sm bg-obsidian focus:outline-none";
+
+  const organizerName = (id: string | null) =>
+    id ? organizers.find((o) => o.id === id)?.name ?? null : null;
 
   const linkable = Boolean(division) && !editable;
   const LinkMaybe = ({
@@ -133,9 +138,9 @@ export default function FixturesList({
                   return (
                     <div
                       key={m.id}
-                      className="flex items-center gap-2 px-3 sm:px-4 py-3"
                       style={{ borderTop: idx === 0 ? "none" : "1px solid var(--hairline)" }}
                     >
+                      <div className="flex items-center gap-2 px-3 sm:px-4 py-3">
                       <LinkMaybe id={m.home_clan_id} className="flex-1 flex items-center justify-end gap-2 min-w-0">
                         <span
                           className="text-[13px] truncate text-right"
@@ -225,6 +230,15 @@ export default function FixturesList({
                           {away?.name ?? "—"}
                         </span>
                       </LinkMaybe>
+                      </div>
+                      {organizerName(m.organizer_id) && (
+                        <p
+                          className="text-center font-display text-[8.5px] uppercase tracking-[0.18em] pb-2.5 -mt-1"
+                          style={{ color: "var(--muted)" }}
+                        >
+                          {organizerName(m.organizer_id)}
+                        </p>
+                      )}
                     </div>
                   );
                 })}

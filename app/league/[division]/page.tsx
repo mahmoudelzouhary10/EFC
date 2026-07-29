@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Clan, Division, Match } from "@/lib/types";
+import { Clan, Division, Match, Organizer } from "@/lib/types";
 import { themeFor, themeVars } from "@/lib/theme";
 import DivisionSwitcher from "@/components/DivisionSwitcher";
 import DivisionCrest from "@/components/DivisionCrest";
@@ -15,6 +15,7 @@ export default function LeaguePage({ params }: { params: { division: string } })
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [clans, setClans] = useState<Clan[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [organizers, setOrganizers] = useState<Organizer[]>([]);
   const [tab, setTab] = useState<"standings" | "fixtures">("standings");
   const [loading, setLoading] = useState(true);
 
@@ -33,13 +34,15 @@ export default function LeaguePage({ params }: { params: { division: string } })
       return;
     }
 
-    const [{ data: clanRows }, { data: matchRows }] = await Promise.all([
+    const [{ data: clanRows }, { data: matchRows }, { data: orgRows }] = await Promise.all([
       supabase.from("clans").select("*").eq("division_id", current.id).order("name"),
       supabase.from("matches").select("*").eq("division_id", current.id).order("matchday"),
+      supabase.from("organizers").select("*"),
     ]);
 
     setClans((clanRows as Clan[]) || []);
     setMatches((matchRows as Match[]) || []);
+    setOrganizers((orgRows as Organizer[]) || []);
     setLoading(false);
   }, [divisionKey, supabase]);
 
@@ -80,7 +83,13 @@ export default function LeaguePage({ params }: { params: { division: string } })
       ) : tab === "standings" ? (
         <StandingsTable clans={clans} matches={matches} division={divisionKey} />
       ) : (
-        <FixturesList clans={clans} matches={matches} editable={false} division={divisionKey} />
+        <FixturesList
+          clans={clans}
+          matches={matches}
+          editable={false}
+          division={divisionKey}
+          organizers={organizers}
+        />
       )}
     </div>
   );

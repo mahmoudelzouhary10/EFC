@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Clan, Division, Match } from "@/lib/types";
+import { Clan, Division, Match, Organizer } from "@/lib/types";
 import { themeFor, themeVars } from "@/lib/theme";
 import DivisionSwitcher from "@/components/DivisionSwitcher";
 import ClanManager from "@/components/ClanManager";
+import OrganizerManager from "@/components/OrganizerManager";
 import FixtureGenerator from "@/components/FixtureGenerator";
 import FixturesList from "@/components/FixturesList";
 import FederationSettingsPanel from "@/components/FederationSettings";
@@ -22,7 +23,8 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
   const [division, setDivision] = useState<Division | null>(null);
   const [clans, setClans] = useState<Clan[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [tab, setTab] = useState<"clans" | "fixtures" | "results" | "settings">("clans");
+  const [organizers, setOrganizers] = useState<Organizer[]>([]);
+  const [tab, setTab] = useState<"clans" | "fixtures" | "results" | "organizers" | "settings">("clans");
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
@@ -33,12 +35,14 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
     setDivision(current);
 
     if (current) {
-      const [{ data: clanRows }, { data: matchRows }] = await Promise.all([
+      const [{ data: clanRows }, { data: matchRows }, { data: orgRows }] = await Promise.all([
         supabase.from("clans").select("*").eq("division_id", current.id).order("name"),
         supabase.from("matches").select("*").eq("division_id", current.id).order("matchday"),
+        supabase.from("organizers").select("*"),
       ]);
       setClans((clanRows as Clan[]) || []);
       setMatches((matchRows as Match[]) || []);
+      setOrganizers((orgRows as Organizer[]) || []);
     }
     setLoading(false);
   }, [divisionKey, supabase]);
@@ -87,6 +91,9 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
       <div className="flex gap-2 mb-4">
         <Pill active={tab === "clans"} onClick={() => setTab("clans")}>Clans</Pill>
         <Pill active={tab === "fixtures"} onClick={() => setTab("fixtures")}>Fixtures</Pill>
+        <Pill active={tab === "organizers"} onClick={() => setTab("organizers")}>
+          المنظمين
+        </Pill>
         <Pill active={tab === "results"} onClick={() => setTab("results")}>Results</Pill>
         <Pill active={tab === "settings"} onClick={() => setTab("settings")}>Settings</Pill>
       </div>
@@ -97,12 +104,19 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
           {tab === "fixtures" && (
             <div className="space-y-4">
               <FixtureGenerator division={division} clans={clans} matches={matches} onChanged={loadAll} />
-              <FixturesList clans={clans} matches={matches} editable={false} />
+              <FixturesList clans={clans} matches={matches} editable={false} organizers={organizers} />
             </div>
           )}
           {tab === "results" && (
-            <FixturesList clans={clans} matches={matches} editable={true} onSaveScore={saveScore} />
+            <FixturesList
+              clans={clans}
+              matches={matches}
+              editable={true}
+              onSaveScore={saveScore}
+              organizers={organizers}
+            />
           )}
+          {tab === "organizers" && <OrganizerManager onChanged={loadAll} />}
           {tab === "settings" && <FederationSettingsPanel />}
         </>
       )}
