@@ -52,3 +52,43 @@ export type StandingRow = {
   gd: number;
   pts: number;
 };
+
+// ── Cup types ────────────────────────────────────────────────────────────────
+export type CupStatus = 'draft' | 'group_stage' | 'knockout' | 'finished';
+export type CupRound  = 'group' | 'quarter_final' | 'semi_final' | 'final';
+
+export type Cup = {
+  id: string;
+  name: string;
+  season: string;
+  status: CupStatus;
+};
+
+export type CupGroup = {
+  id: string;
+  cup_id: string;
+  name: string;   // أ، ب، ج، د
+  slot: number;   // 1-based
+  qualifiers_count: number;
+};
+
+export type CupGroupClan = {
+  id: string;
+  group_id: string;
+  clan_id: string;
+};
+
+export type CupMatch = {
+  id: string;
+  cup_id: string;
+  group_id: string | null;
+  round: CupRound;
+  slot: number | null;       // knockout: QF=1-4, SF=5-6, Final=7
+  matchday: number | null;
+  home_clan_id: string | null;
+  away_clan_id: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  played: boolean;
+  winner_id: string | null;
+};
