@@ -75,6 +75,36 @@ export function drawGroups(ids: string[], n: number): string[][] {
   return groups;
 }
 
+/**
+ * Balanced draw: clans from each division are spread evenly across the
+ * groups, so no group ends up made of one division only (when the picked
+ * clans allow it). Group sizes stay within 1 of each other, and each
+ * division's clans per group also stay within 1 of each other.
+ */
+export function drawBalancedGroups(
+  clans: { id: string; division_id: string }[],
+  n: number
+): string[][] {
+  const byDivision: Record<string, string[]> = {};
+  clans.forEach((c) => (byDivision[c.division_id] ||= []).push(c.id));
+
+  // keep dealing from one running pointer so every division's extras
+  // land on different groups instead of stacking on the first one
+  const groups: string[][] = Array.from({ length: n }, () => []);
+  let pointer = 0;
+  Object.values(byDivision)
+    .sort((a, b) => b.length - a.length)
+    .forEach((ids) => {
+      shuffle(ids).forEach((id) => {
+        groups[pointer % n].push(id);
+        pointer++;
+      });
+    });
+
+  // randomise which group (أ، ب، ج...) gets which mix
+  return shuffle(groups);
+}
+
 /** Single round-robin fixtures within a group */
 export function groupFixtures(ids: string[]): [string, string][] {
   const pairs: [string, string][] = [];

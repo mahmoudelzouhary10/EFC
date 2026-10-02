@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trophy, Shuffle, Trash2, CheckCircle2, LogOut, Save } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Clan, Cup, CupGroup, CupGroupClan, CupMatch } from "@/lib/types";
-import { planGroups, drawGroups, groupFixtures, buildKnockoutSlots, advancesToSlot, getSeededQualifiers, GROUP_NAMES, ROUND_AR } from "@/lib/cup";
+import { Clan, Cup, CupGroup, CupGroupClan, CupMatch, Division } from "@/lib/types";
+import { planGroups, drawBalancedGroups, groupFixtures, buildKnockoutSlots, advancesToSlot, getSeededQualifiers, GROUP_NAMES, ROUND_AR } from "@/lib/cup";
 import CupGroupStage from "@/components/CupGroupStage";
 import CupBracket from "@/components/CupBracket";
 import { SectionCard } from "@/components/ui";
@@ -18,6 +18,7 @@ export default function AdminCupPage() {
   const [cupMatches, setCupMatches] = useState<CupMatch[]>([]);
   const [allClans, setAllClans] = useState<Clan[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
   const [season, setSeason] = useState("2025/2026");
   const [cupName, setCupName] = useState("كأس مصر");
   const [busy, setBusy] = useState(false);
@@ -26,11 +27,13 @@ export default function AdminCupPage() {
   const [tab, setTab] = useState<"groups"|"bracket">("bracket");
 
   const load = useCallback(async () => {
-    const [{ data: cupRow }, { data: clansData }] = await Promise.all([
+    const [{ data: cupRow }, { data: clansData }, { data: divData }] = await Promise.all([
       supabase.from("cups").select("*").order("created_at",{ascending:false}).limit(1).single(),
       supabase.from("clans").select("*").order("name"),
+      supabase.from("divisions").select("*").order("key"),
     ]);
     setAllClans((clansData as Clan[]) || []);
+    setDivisions((divData as Division[]) || []);
     if (!cupRow) { setCup(null); return; }
     const c = cupRow as Cup;
     setCup(c);
@@ -58,7 +61,8 @@ export default function AdminCupPage() {
     setBusy(true); setError(null);
     await supabase.from("cup_groups").delete().eq("cup_id", cup.id);
     const { numGroups, qualifiersPerGroup } = planGroups(selectedIds.length);
-    const distribution = drawGroups(selectedIds, numGroups);
+    const picked = allClans.filter(c => selectedIds.includes(c.id));
+    const distribution = drawBalancedGroups(picked, numGroups);
     for (let i = 0; i < distribution.length; i++) {
       const { data: g } = await supabase.from("cup_groups")
         .insert({ cup_id: cup.id, name: GROUP_NAMES[i], slot: i+1, qualifiers_count: qualifiersPerGroup })
@@ -172,6 +176,10 @@ export default function AdminCupPage() {
           <h3 className="font-ar font-bold text-sm mb-1">اختر الكلانات المشاركة</h3>
           <p className="text-[11px] mb-3" style={{ color: "var(--muted)" }}>
             {selectedIds.length} كلان مختار · السيستم بيحدد عدد المجموعات تلقائي
+          </p>
+          <p className="text-[11px] mb-3" style={{ color: "var(--accent-hi)" }}>
+            {divisions.map(d => `${d.name_ar}: ${allClans.filter(c => selectedIds.includes(c.id) && c.division_id === d.id).length}`).join(" · ")}
+            {" "}— القرعة بتوزّع كل درجة بالتساوي على المجموعات.
           </p>
           <div className="space-y-1.5 max-h-72 overflow-y-auto mb-4">
             {allClans.filter(c => !c.withdrawn).map(c => {
