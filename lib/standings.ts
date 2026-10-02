@@ -29,7 +29,10 @@ export function computeStandings(clans: Clan[], matches: Match[]): StandingRow[]
       else { h.d++; a.d++; h.pts += 1; a.pts += 1; }
     });
 
-  const rows = Object.values(table).map((r) => ({ ...r, gd: r.gf - r.ga }));
+  const hidden = new Set(clans.filter((c) => c.withdrawn).map((c) => c.id));
+  const rows = Object.values(table)
+    .filter((r) => !hidden.has(r.id))
+    .map((r) => ({ ...r, gd: r.gf - r.ga }));
   rows.sort((x, y) => y.pts - x.pts || y.gd - x.gd || y.gf - x.gf || x.name.localeCompare(y.name));
   return rows;
 }

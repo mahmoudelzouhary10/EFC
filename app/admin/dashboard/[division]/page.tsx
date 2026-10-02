@@ -122,7 +122,7 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
           )}
           {tab === "organizers" && (
             <div className="space-y-4">
-              <OrganizerManager allClans={allClans} onChanged={loadAll} />
+              <OrganizerManager allClans={allClans.filter((c) => !c.withdrawn)} onChanged={loadAll} />
               <MatchdayOrganizers
                 division={division}
                 clans={clans}

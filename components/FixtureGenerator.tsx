@@ -25,7 +25,8 @@ export default function FixtureGenerator({
   const [showDanger, setShowDanger] = useState(false);
   const [typed, setTyped] = useState("");
 
-  const ready = clans.length === 10;
+  const activeClans = clans.filter((c) => !c.withdrawn);
+  const ready = activeClans.length === 10;
   const hasFixtures = matches.length > 0;
   const playedCount = matches.filter((m) => m.played).length;
   const started = playedCount > 0;
@@ -38,7 +39,7 @@ export default function FixtureGenerator({
     setBusy(true);
     await supabase.from("matches").delete().eq("division_id", division.id);
 
-    const drafts = generateFixtures(clans.map((c) => c.id), double).map((d) => ({
+    const drafts = generateFixtures(activeClans.map((c) => c.id), double).map((d) => ({
       division_id: division.id,
       matchday: d.matchday,
       home_clan_id: d.home_clan_id,
@@ -119,7 +120,7 @@ export default function FixtureGenerator({
         <p className="text-xs mb-3" style={{ color: "var(--muted)" }}>
           {ready
             ? `${division.name_ar} فيها 10 كلانات — جاهزة.`
-            : `محتاج 10 كلانات بالظبط (دلوقتي ${clans.length}).`}
+            : `محتاج 10 كلانات بالظبط (دلوقتي ${activeClans.length}).`}
           {hasFixtures && " فيه جدول موجود، وإعادة العمل هتستبدله."}
         </p>
       )}

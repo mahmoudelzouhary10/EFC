@@ -174,7 +174,7 @@ export default function AdminCupPage() {
             {selectedIds.length} كلان مختار · السيستم بيحدد عدد المجموعات تلقائي
           </p>
           <div className="space-y-1.5 max-h-72 overflow-y-auto mb-4">
-            {allClans.map(c => {
+            {allClans.filter(c => !c.withdrawn).map(c => {
               const on = selectedIds.includes(c.id);
               return (
                 <button key={c.id} onClick={() => setSelectedIds(s => on ? s.filter(x=>x!==c.id) : [...s,c.id])}

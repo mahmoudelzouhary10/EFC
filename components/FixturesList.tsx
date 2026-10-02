@@ -149,7 +149,7 @@ export default function FixturesList({
                             fontWeight: hw ? 700 : 500,
                           }}
                         >
-                          {home?.name ?? "—"}
+                          {home ? home.name + (home.withdrawn ? " (منسحب)" : "") : "—"}
                         </span>
                         <Mark clan={home} />
                       </LinkMaybe>
@@ -227,7 +227,7 @@ export default function FixturesList({
                             fontWeight: aw ? 700 : 500,
                           }}
                         >
-                          {away?.name ?? "—"}
+                          {away ? away.name + (away.withdrawn ? " (منسحب)" : "") : "—"}
                         </span>
                       </LinkMaybe>
                       </div>

@@ -208,6 +208,11 @@ export default function ClanPage({ params }: { params: Params }) {
         </div>
 
         <h1 className="font-ar font-black text-2xl mt-3.5">{clan.name}</h1>
+        {clan.withdrawn && (
+          <p className="font-ar text-[11px] mt-1.5" style={{ color: "#E8737A" }}>
+            انسحب من الدوري
+          </p>
+        )}
         {row && (
           <p
             className="font-display text-[10px] uppercase tracking-[0.28em] mt-1.5"

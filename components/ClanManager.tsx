@@ -49,7 +49,8 @@ export default function ClanManager({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const full = clans.length >= 10;
+  const active = clans.filter((c) => !c.withdrawn);
+  const full = active.length >= 10;
 
   const addClan = async () => {
     if (!newName.trim() || full) return;
@@ -77,8 +78,26 @@ export default function ClanManager({
     }
   };
 
+  /**
+   * Withdraw a clan. Its played matches stay (so opponents keep those
+   * results) and it disappears from the table. Its upcoming fixtures are
+   * removed. A clan that never played is deleted outright.
+   */
   const removeClan = async (id: string) => {
-    const { error } = await supabase.from("clans").delete().eq("id", id);
+    setError(null);
+    const involved = `home_clan_id.eq.${id},away_clan_id.eq.${id}`;
+    const { count } = await supabase
+      .from("matches")
+      .select("id", { count: "exact", head: true })
+      .eq("played", true)
+      .or(involved);
+
+    await supabase.from("matches").delete().eq("played", false).or(involved);
+
+    const { error } =
+      (count ?? 0) > 0
+        ? await supabase.from("clans").update({ withdrawn: true }).eq("id", id)
+        : await supabase.from("clans").delete().eq("id", id);
     if (error) setError(error.message);
     setConfirmDeleteId(null);
     onChanged();
@@ -120,14 +139,14 @@ export default function ClanManager({
           <Users size={15} className="text-cyan-400" /> Clans
         </h3>
         <span className={`text-xs font-mono px-2 py-0.5 rounded ${full ? "text-amber-300 bg-amber-400/10" : "text-slate-400 bg-white/5"}`}>
-          {clans.length}/10
+          {active.length}/10
         </span>
       </div>
 
       {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
 
       <div className="space-y-1.5 mb-4">
-        {clans.map((c) => (
+        {active.map((c) => (
           <div key={c.id} className="bg-black/20 border border-white/5 rounded-lg px-3 py-2">
             {editingId === c.id ? (
               <div className="space-y-2">

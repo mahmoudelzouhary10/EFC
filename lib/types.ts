@@ -11,6 +11,8 @@ export type Clan = {
   name: string;
   tag: string;
   logo_url: string | null;
+  /** clan left the league: hidden from the table, old results stay */
+  withdrawn?: boolean;
 };
 
 export type FederationSettings = {

@@ -65,7 +65,7 @@ export default function LeaguePage({ params }: { params: { division: string } })
         <DivisionSwitcher divisions={divisions} active={divisionKey} basePath="/league" />
       )}
 
-      <DivisionCrest theme={theme} clanCount={clans.length} matchCount={matches.length} />
+      <DivisionCrest theme={theme} clanCount={clans.filter((c) => !c.withdrawn).length} matchCount={matches.length} />
 
       <div className="flex gap-2 mb-4 justify-center">
         <Pill active={tab === "standings"} onClick={() => setTab("standings")}>
