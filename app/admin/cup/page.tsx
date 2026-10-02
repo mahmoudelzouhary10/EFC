@@ -129,6 +129,34 @@ export default function AdminCupPage() {
   const knockoutMatches = cupMatches.filter(m => m.round !== "group");
   const champion = allClans.find(c => c.id === knockoutMatches.find(m => m.slot === 7)?.winner_id);
 
+  // Cups drawn before the rounds fix have one match per "round" (1..10 in a group of 5).
+  const expectedRounds = (n: number) => (n % 2 === 0 ? n - 1 : n);
+  const roundsLegacy = groups.some(g => {
+    const n = groupClans.filter(gc => gc.group_id === g.id).length;
+    return groupMatchesAll.some(m => m.group_id === g.id && (m.matchday ?? 1) > expectedRounds(n));
+  });
+
+  /** Re-numbers the existing group matches into real rounds. Scores are kept. */
+  const fixRounds = async () => {
+    setBusy(true);
+    for (const g of groups) {
+      const ids = groupClans.filter(gc => gc.group_id === g.id).map(gc => gc.clan_id).sort();
+      const roundOf = new Map<string, number>();
+      groupRounds(ids).forEach((pairs, r) =>
+        pairs.forEach(([a, b]) => roundOf.set([a, b].sort().join("|"), r + 1)));
+      const byRound: Record<number, string[]> = {};
+      groupMatchesAll.filter(m => m.group_id === g.id).forEach(m => {
+        const r = roundOf.get([m.home_clan_id!, m.away_clan_id!].sort().join("|"));
+        if (r) (byRound[r] ||= []).push(m.id);
+      });
+      for (const [r, matchIds] of Object.entries(byRound)) {
+        await supabase.from("cup_matches").update({ matchday: Number(r) }).in("id", matchIds);
+      }
+    }
+    setBusy(false);
+    load();
+  };
+
   if (cup === undefined) return <p className="py-12 text-center text-sm" style={{ color: "var(--muted)" }}>جاري التحميل…</p>;
 
   return (
@@ -208,6 +236,20 @@ export default function AdminCupPage() {
 
       {cup?.status === "group_stage" && (
         <div className="space-y-4">
+          {roundsLegacy && (
+            <SectionCard className="p-4">
+              <p className="font-ar font-bold text-sm mb-1" style={{ color: "#E8737A" }}>ترقيم الجولات قديم</p>
+              <p className="text-[11px] leading-relaxed mb-3" style={{ color: "var(--muted)" }}>
+                القرعة دي اتعملت قبل تقسيم الجولات. دوس الزرار وهيتقسّم كل ماتشات المجموعات لجولات حقيقية
+                (كل كلان بيلعب مرة في الجولة)، والنتايج اللي اتسجلت هتفضل زي ما هي.
+              </p>
+              <button onClick={fixRounds} disabled={busy}
+                className="px-4 py-2 rounded-xl text-xs font-bold disabled:opacity-50"
+                style={{ background: "var(--accent-soft)", border: "1px solid var(--accent-line)", color: "var(--accent-hi)" }}>
+                {busy ? "…" : "اضبط الجولات"}
+              </button>
+            </SectionCard>
+          )}
           <div className="flex gap-2">
             {(["rounds","groups"] as const).map(t => (
               <button key={t} onClick={() => setGsView(t)}
