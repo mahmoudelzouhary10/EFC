@@ -4,6 +4,7 @@ import { Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Clan, Cup, CupGroup, CupGroupClan, CupMatch } from "@/lib/types";
 import CupGroupStage from "@/components/CupGroupStage";
+import CupRounds from "@/components/CupRounds";
 import CupBracket from "@/components/CupBracket";
 import { SectionCard } from "@/components/ui";
 
@@ -14,7 +15,8 @@ export default function CupPage() {
   const [groupClans, setGroupClans] = useState<CupGroupClan[]>([]);
   const [cupMatches, setCupMatches] = useState<CupMatch[]>([]);
   const [allClans, setAllClans] = useState<Clan[]>([]);
-  const [tab, setTab] = useState<"groups"|"bracket">("bracket");
+  const [tab, setTab] = useState<"groups"|"bracket"|"rounds">("bracket");
+  const [gsView, setGsView] = useState<"rounds"|"groups">("rounds");
 
   const load = useCallback(async () => {
     const [{ data: cupRow }, { data: clansData }] = await Promise.all([
@@ -77,25 +79,42 @@ export default function CupPage() {
       </div>
 
       {cup.status === "group_stage" && (
-        <CupGroupStage groups={groups} groupClans={groupClans} cupMatches={groupMatches}
-          allClans={allClans} editable={false} />
+        <div className="space-y-4">
+          <div className="flex gap-2 justify-center">
+            {(["rounds","groups"] as const).map(t => (
+              <button key={t} onClick={() => setGsView(t)}
+                className="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-widest border"
+                style={gsView === t
+                  ? { background: "var(--accent-soft)", border: "1px solid var(--accent-line)", color: "var(--accent-hi)" }
+                  : { border: "1px solid var(--hairline)", color: "var(--muted)" }}>
+                {t === "rounds" ? "الجولات" : "المجموعات"}
+              </button>
+            ))}
+          </div>
+          {gsView === "rounds"
+            ? <CupRounds groups={groups} cupMatches={groupMatches} allClans={allClans} editable={false} />
+            : <CupGroupStage groups={groups} groupClans={groupClans} cupMatches={groupMatches}
+                allClans={allClans} editable={false} />}
+        </div>
       )}
 
       {inKnockout && (
         <div className="space-y-4">
           <div className="flex gap-2 justify-center">
-            {(["bracket","groups"] as const).map(t => (
+            {(["bracket","rounds","groups"] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-widest border"
                 style={tab === t
                   ? { background: "var(--accent-soft)", border: "1px solid var(--accent-line)", color: "var(--accent-hi)" }
                   : { border: "1px solid var(--hairline)", color: "var(--muted)" }}>
-                {t === "bracket" ? "البراكيت" : "المجموعات"}
+                {t === "bracket" ? "البراكيت" : t === "rounds" ? "الجولات" : "المجموعات"}
               </button>
             ))}
           </div>
           {tab === "bracket"
             ? <div className="pt-6"><CupBracket slots={knockoutMatches} clans={allClans} editable={false} /></div>
+            : tab === "rounds"
+            ? <CupRounds groups={groups} cupMatches={groupMatches} allClans={allClans} editable={false} />
             : <CupGroupStage groups={groups} groupClans={groupClans} cupMatches={groupMatches}
                 allClans={allClans} editable={false} />
           }

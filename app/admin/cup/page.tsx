@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { Trophy, Shuffle, Trash2, CheckCircle2, LogOut, Save } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Clan, Cup, CupGroup, CupGroupClan, CupMatch, Division } from "@/lib/types";
-import { planGroups, drawBalancedGroups, groupFixtures, buildKnockoutSlots, advancesToSlot, getSeededQualifiers, GROUP_NAMES, ROUND_AR } from "@/lib/cup";
+import { planGroups, drawBalancedGroups, groupRounds, buildKnockoutSlots, advancesToSlot, getSeededQualifiers, GROUP_NAMES, ROUND_AR } from "@/lib/cup";
 import CupGroupStage from "@/components/CupGroupStage";
+import CupRounds from "@/components/CupRounds";
 import CupBracket from "@/components/CupBracket";
 import { SectionCard } from "@/components/ui";
 
@@ -24,7 +25,8 @@ export default function AdminCupPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [tab, setTab] = useState<"groups"|"bracket">("bracket");
+  const [tab, setTab] = useState<"groups"|"bracket"|"rounds">("bracket");
+  const [gsView, setGsView] = useState<"rounds"|"groups">("rounds");
 
   const load = useCallback(async () => {
     const [{ data: cupRow }, { data: clansData }, { data: divData }] = await Promise.all([
@@ -69,11 +71,12 @@ export default function AdminCupPage() {
         .select().single();
       if (!g) continue;
       await supabase.from("cup_group_clans").insert(distribution[i].map(cid => ({ group_id: (g as CupGroup).id, clan_id: cid })));
-      const fixtures = groupFixtures(distribution[i]);
-      await supabase.from("cup_matches").insert(fixtures.map(([h,a],idx) => ({
-        cup_id: cup.id, group_id: (g as CupGroup).id, round: "group", matchday: idx+1,
-        home_clan_id: h, away_clan_id: a, played: false,
-      })));
+      const rows = groupRounds(distribution[i]).flatMap((pairs, r) =>
+        pairs.map(([h, a]) => ({
+          cup_id: cup.id, group_id: (g as CupGroup).id, round: "group", matchday: r + 1,
+          home_clan_id: h, away_clan_id: a, played: false,
+        })));
+      await supabase.from("cup_matches").insert(rows);
     }
     await supabase.from("cups").update({ status: "group_stage" }).eq("id", cup.id);
     setBusy(false); load();
@@ -205,8 +208,22 @@ export default function AdminCupPage() {
 
       {cup?.status === "group_stage" && (
         <div className="space-y-4">
-          <CupGroupStage groups={groups} groupClans={groupClans} cupMatches={groupMatchesAll}
-            allClans={allClans} editable={true} onSaveGroupResult={saveGroupResult} />
+          <div className="flex gap-2">
+            {(["rounds","groups"] as const).map(t => (
+              <button key={t} onClick={() => setGsView(t)}
+                className="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-widest border"
+                style={gsView === t
+                  ? { background: "var(--accent-soft)", border: "1px solid var(--accent-line)", color: "var(--accent-hi)" }
+                  : { border: "1px solid var(--hairline)", color: "var(--muted)" }}>
+                {t === "rounds" ? "الجولات" : "المجموعات"}
+              </button>
+            ))}
+          </div>
+          {gsView === "rounds"
+            ? <CupRounds groups={groups} cupMatches={groupMatchesAll} allClans={allClans}
+                editable={true} onSave={saveGroupResult} />
+            : <CupGroupStage groups={groups} groupClans={groupClans} cupMatches={groupMatchesAll}
+                allClans={allClans} editable={true} onSaveGroupResult={saveGroupResult} />}
           {allGroupPlayed && (
             <SectionCard className="p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -237,19 +254,21 @@ export default function AdminCupPage() {
             </SectionCard>
           )}
           <div className="flex gap-2">
-            {(["bracket","groups"] as const).map(t => (
+            {(["bracket","rounds","groups"] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-widest border"
                 style={tab === t
                   ? { background: "var(--accent-soft)", border: "1px solid var(--accent-line)", color: "var(--accent-hi)" }
                   : { border: "1px solid var(--hairline)", color: "var(--muted)" }}>
-                {t === "bracket" ? "البراكيت" : "المجموعات"}
+                {t === "bracket" ? "البراكيت" : t === "rounds" ? "الجولات" : "المجموعات"}
               </button>
             ))}
           </div>
           {tab === "bracket"
             ? <div className="pt-6"><CupBracket slots={knockoutMatches} clans={allClans}
                 editable={cup.status === "knockout"} onSaveResult={saveKnockoutResult} /></div>
+            : tab === "rounds"
+            ? <CupRounds groups={groups} cupMatches={groupMatchesAll} allClans={allClans} editable={false} />
             : <CupGroupStage groups={groups} groupClans={groupClans} cupMatches={groupMatchesAll}
                 allClans={allClans} editable={false} />
           }

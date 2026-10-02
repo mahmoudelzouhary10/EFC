@@ -105,6 +105,29 @@ export function drawBalancedGroups(
   return shuffle(groups);
 }
 
+/**
+ * Single round-robin split into real rounds (circle method): in every round
+ * each clan plays at most once. A group of 4 gets 3 rounds; a group of 5 gets
+ * 5 rounds with one clan resting each round.
+ */
+export function groupRounds(ids: string[]): [string, string][][] {
+  const list: (string | null)[] = [...ids];
+  if (list.length % 2 === 1) list.push(null);
+  const n = list.length;
+  const rounds: [string, string][][] = [];
+  for (let r = 0; r < n - 1; r++) {
+    const pairs: [string, string][] = [];
+    for (let i = 0; i < n / 2; i++) {
+      const a = list[i];
+      const b = list[n - 1 - i];
+      if (a && b) pairs.push(r % 2 === 0 ? [a, b] : [b, a]);
+    }
+    rounds.push(pairs);
+    list.splice(1, 0, list.pop() as string | null);
+  }
+  return rounds;
+}
+
 /** Single round-robin fixtures within a group */
 export function groupFixtures(ids: string[]): [string, string][] {
   const pairs: [string, string][] = [];
