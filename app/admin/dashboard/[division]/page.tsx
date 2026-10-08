@@ -10,6 +10,7 @@ import DivisionSwitcher from "@/components/DivisionSwitcher";
 import ClanManager from "@/components/ClanManager";
 import OrganizerManager from "@/components/OrganizerManager";
 import MatchdayOrganizers from "@/components/MatchdayOrganizers";
+import FillFixtures from "@/components/FillFixtures";
 import FixtureGenerator from "@/components/FixtureGenerator";
 import FixturesList from "@/components/FixturesList";
 import FederationSettingsPanel from "@/components/FederationSettings";
@@ -108,6 +109,7 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
           {tab === "fixtures" && (
             <div className="space-y-4">
               <FixtureGenerator division={division} clans={clans} matches={matches} onChanged={loadAll} />
+              <FillFixtures division={division} clans={clans} matches={matches} onChanged={loadAll} />
               <FixturesList clans={clans} matches={matches} editable={false} organizers={organizers} />
             </div>
           )}
