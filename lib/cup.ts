@@ -143,7 +143,9 @@ export function cupGroupStandings(
   groupMatches: CupMatch[],
   allClans: Clan[]
 ) {
-  const leagueClans = allClans.filter(c => groupClanIds.includes(c.id));
+  const leagueClans = allClans
+    .filter(c => groupClanIds.includes(c.id))
+    .map(c => ({ ...c, withdrawn: false }));
   const leagueMatches = groupMatches
     .filter(m => m.home_clan_id && m.away_clan_id)
     .map(m => ({

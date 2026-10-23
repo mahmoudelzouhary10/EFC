@@ -7,6 +7,7 @@ import { Clan, Cup, CupGroup, CupGroupClan, CupMatch, Division } from "@/lib/typ
 import { planGroups, drawBalancedGroups, groupRounds, buildKnockoutSlots, advancesToSlot, getSeededQualifiers, GROUP_NAMES, ROUND_AR } from "@/lib/cup";
 import CupGroupStage from "@/components/CupGroupStage";
 import CupRounds from "@/components/CupRounds";
+import CupReplaceClan from "@/components/CupReplaceClan";
 import CupBracket from "@/components/CupBracket";
 import { SectionCard } from "@/components/ui";
 
@@ -315,6 +316,11 @@ export default function AdminCupPage() {
                 allClans={allClans} editable={false} />
           }
         </div>
+      )}
+
+      {cup && cup.status !== "draft" && (
+        <CupReplaceClan cup={cup} groups={groups} groupClans={groupClans}
+          cupMatches={cupMatches} allClans={allClans} onChanged={load} />
       )}
 
       {cup && (
