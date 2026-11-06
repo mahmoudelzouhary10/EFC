@@ -11,6 +11,7 @@ import ClanManager from "@/components/ClanManager";
 import OrganizerManager from "@/components/OrganizerManager";
 import MatchdayOrganizers from "@/components/MatchdayOrganizers";
 import FillFixtures from "@/components/FillFixtures";
+import FixtureEditor from "@/components/FixtureEditor";
 import FixtureGenerator from "@/components/FixtureGenerator";
 import FixturesList from "@/components/FixturesList";
 import FederationSettingsPanel from "@/components/FederationSettings";
@@ -27,7 +28,7 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
   const [matches, setMatches] = useState<Match[]>([]);
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
   const [allClans, setAllClans] = useState<Clan[]>([]);
-  const [tab, setTab] = useState<"clans" | "fixtures" | "results" | "organizers" | "settings">("clans");
+  const [tab, setTab] = useState<"clans" | "fixtures" | "editor" | "results" | "organizers" | "settings">("clans");
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
@@ -96,6 +97,7 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
       <div className="flex gap-2 mb-4">
         <Pill active={tab === "clans"} onClick={() => setTab("clans")}>Clans</Pill>
         <Pill active={tab === "fixtures"} onClick={() => setTab("fixtures")}>Fixtures</Pill>
+        <Pill active={tab === "editor"} onClick={() => setTab("editor")}>تعديل الجدول</Pill>
         <Pill active={tab === "organizers"} onClick={() => setTab("organizers")}>
           المنظمين
         </Pill>
@@ -112,6 +114,9 @@ export default function AdminDivisionPage({ params }: { params: { division: stri
               <FillFixtures division={division} clans={clans} matches={matches} onChanged={loadAll} />
               <FixturesList clans={clans} matches={matches} editable={false} organizers={organizers} />
             </div>
+          )}
+          {tab === "editor" && (
+            <FixtureEditor division={division} clans={clans} matches={matches} organizers={organizers} onChanged={loadAll} />
           )}
           {tab === "results" && (
             <FixturesList
